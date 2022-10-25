@@ -1,4 +1,6 @@
+mod lexer;
 mod syntax_kind;
+mod token;
 
 #[cfg(test)]
 mod tests {
