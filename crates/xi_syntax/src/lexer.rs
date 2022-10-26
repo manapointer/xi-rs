@@ -155,6 +155,12 @@ impl<'src> Lexer<'src> {
         }
         diagnostic
     }
+
+    fn consume_integer(&mut self) {
+        while let Some('0'..='9') = self.peek() {
+            self.bump();
+        }
+    }
 }
 
 impl<'src> Iterator for Lexer<'src> {
@@ -205,7 +211,10 @@ impl<'src> Iterator for Lexer<'src> {
                 diagnostic = self.consume_character();
                 CHAR
             }
-            '0'..='9' => todo!(),
+            '0'..='9' => {
+                self.consume_integer();
+                INTEGER
+            }
             _ => todo!(),
         };
         Some((
