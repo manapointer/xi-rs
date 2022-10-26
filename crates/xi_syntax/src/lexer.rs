@@ -153,21 +153,41 @@ impl<'src> Lexer<'src> {
     }
 
     fn consume_char_literal(&mut self) -> Option<Diagnostic> {
-        let mut diagnostic = None;
         match self.peek() {
             Some('\'') => {
-                diagnostic.get_or_insert(Diagnostic::error("empty character literal"));
+                self.bump();
+                return Some(Diagnostic::error("empty character literal"));
             }
             Some('\\') => {
                 let res = self.consume_escape_sequence('\'');
-                if let Some(res) = res {
-                    diagnostic.get_or_insert(res);
+                if res.is_some() {
+                    return res;
                 }
             }
             None => return Some(Diagnostic::error("unterminated character literal")),
-            _ => (),
+            _ => {
+                self.bump();
+            }
         }
-        diagnostic
+        if let Some('\'') = self.peek() {
+            self.bump();
+            return None;
+        }
+        loop {
+            match self.peek() {
+                Some('\'') => {
+                    self.bump();
+                    break;
+                }
+                None => return Some(Diagnostic::error("unterminated character literal")),
+                _ => {
+                    self.bump();
+                }
+            }
+        }
+        Some(Diagnostic::error(
+            "character literal must be one character long",
+        ))
     }
 
     fn consume_int_literal(&mut self) {
@@ -264,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn test_string_literal() {
+    fn test_str_literal() {
         check_lexing(
             r#""foo" "bar""#,
             expect![[r#"
@@ -272,6 +292,70 @@ mod tests {
             LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
             LexerReturn(Token { kind: STRING, string: "\"bar\"" }, None)
         "#]],
+        )
+    }
+
+    #[test]
+    fn test_int_literal() {
+        check_lexing(
+            r#"1234 012"#,
+            expect![[r#"
+            LexerReturn(Token { kind: INTEGER, string: "1234" }, None)
+            LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+            LexerReturn(Token { kind: INTEGER, string: "012" }, None)
+        "#]],
+        )
+    }
+
+    #[test]
+    fn test_char_literal() {
+        check_lexing(
+            r#"'a' '' '\n' '\'' '\x{ffffff}' 'asdf'"#,
+            expect![[r#"
+                LexerReturn(Token { kind: CHAR, string: "'a'" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: CHAR, string: "''" }, Some(Diagnostic { message: "empty character literal", severity: Error }))
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: CHAR, string: "'\\n'" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: CHAR, string: "'\\''" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: CHAR, string: "'\\x{ffffff}'" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: CHAR, string: "'asdf'" }, Some(Diagnostic { message: "character literal must be one character long", severity: Error }))
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_ident_or_keyword() {
+        check_lexing(
+            "foo x if else while return length use int bool true false",
+            expect![[r#"
+                LexerReturn(Token { kind: IDENT, string: "foo" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: IDENT, string: "x" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: IF, string: "if" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: ELSE, string: "else" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: WHILE, string: "while" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: RETURN, string: "return" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: LENGTH, string: "length" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: USE, string: "use" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: INT, string: "int" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: BOOL, string: "bool" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: TRUE, string: "true" }, None)
+                LexerReturn(Token { kind: WHITESPACE, string: " " }, None)
+                LexerReturn(Token { kind: FALSE, string: "false" }, None)
+            "#]],
         )
     }
 
