@@ -2,6 +2,7 @@
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SyntaxKind {
+    ERROR,
     IF,
     ELSE,
     WHILE,
@@ -13,6 +14,7 @@ pub enum SyntaxKind {
     TRUE,
     FALSE,
     UNDERSCORE,
+    WHITESPACE,
 
     IDENT,
     INTEGER,

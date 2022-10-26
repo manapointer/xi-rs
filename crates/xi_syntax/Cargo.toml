@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 xi_errors = { path = "../xi_errors" }
+
+[dev-dependencies]
+expect-test = "1.4.0"
